@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>WebOCU Dock</title>
+  <!-- webOS TV always exposes a 1920x1080 logical viewport -->
+  <meta name="viewport" content="width=1920, height=1080, initial-scale=1, user-scalable=no">
+  <link rel="stylesheet" href="css/app.css">
+</head>
+<body>
+  <!-- Transparent layer: whatever the TV shows underneath stays visible.
+       In a desktop browser it renders a placeholder pattern instead. -->
+  <div id="backdrop" class="backdrop"></div>
+
+  <!-- UI layer, laid out for 1920x1080 and scaled with --ui-scale -->
+  <div id="ui" class="ui">
+
+    <!-- The dock: app icons at the left edge, Settings at its foot (js/dock.js).
+         The two balloons stand beside it, over the picture. -->
+    <aside id="dock" class="dock" role="dialog" aria-modal="false" aria-label="Apps" aria-hidden="true">
+      <div id="dockPanel" class="dock__panel">
+        <!-- The clock above the icons, the date under the foot (Settings -> General -> Clock) -->
+        <div id="dockClock" class="dock__clock" aria-hidden="true"></div>
+        <div id="dockGrid" class="dock__grid" role="listbox"></div>
+        <!-- The foot: three quick buttons the user sets (Appearance -> Quick
+             launch; an empty one is not drawn), then Settings, all at the right -->
+        <div class="dock__foot">
+          <div id="dockQuick1" class="dock__tile dock__tile--quick" data-slot="1" role="button"></div>
+          <div id="dockQuick2" class="dock__tile dock__tile--quick" data-slot="2" role="button"></div>
+          <div id="dockQuick3" class="dock__tile dock__tile--quick" data-slot="3" role="button"></div>
+          <div id="dockSettings" class="dock__tile dock__tile--settings" role="button"></div>
+        </div>
+        <div id="dockDate" class="dock__date" aria-hidden="true"></div>
+      </div>
+      <!-- What the Submenu quick button opens: a small panel beside the dock, at the
+           height of that button (dock.js fills and places it) -->
+      <div id="dockSub" class="dock__sub" role="menu" aria-hidden="true"></div>
+      <div id="dockLabel" class="dock__label" aria-hidden="true"></div>
+      <div id="dockNote" class="dock__note" role="status" aria-live="polite"></div>
+    </aside>
+
+    <!-- Settings window, opened from the dock (js/menu.js + js/settings.js) -->
+    <aside id="menu" class="menu" role="dialog" aria-modal="true" aria-label="Settings" aria-hidden="true">
+      <div class="menu__panel">
+        <!-- Rail: the sliders icon stands in the band of the heading, the
+             section icons below it. -->
+        <nav id="rail" class="rail" aria-label="Sections">
+          <div id="railHead" class="rail__head" aria-hidden="true"></div>
+          <div id="railItems" class="rail__items" role="tablist"></div>
+        </nav>
+
+        <div class="pane">
+          <header class="pane__head">
+            <h1 id="paneTitle" class="pane__title"></h1>
+            <p id="paneSub" class="pane__sub"></p>
+          </header>
+          <div id="rows" class="rows" role="tabpanel"></div>
+          <footer id="paneHint" class="pane__hint"></footer>
+        </div>
+      </div>
+    </aside>
+
+    <!-- Confirmation for destructive actions -->
+    <div id="dialog" class="dialog" role="alertdialog" aria-hidden="true">
+      <div class="dialog__box">
+        <p id="dialogText" class="dialog__text"></p>
+        <div class="dialog__buttons">
+          <div id="dialogCancel" class="dialog__btn"></div>
+          <div id="dialogConfirm" class="dialog__btn dialog__btn--danger"></div>
+        </div>
+      </div>
+    </div>
+
+    <div id="toast" class="toast" role="status" aria-live="polite"></div>
+  </div>
+
+  <script src="js/keys.js"></script>
+
+  <!-- Locale files: comment out languages you don't need to reduce page size.
+       English (en) is required as fallback. -->
+  <script src="locales/en.js"></script>
+  <script src="locales/ru.js"></script>
+  <script src="locales/de.js"></script>
+  <script src="locales/fr.js"></script>
+  <script src="locales/es.js"></script>
+  <script src="locales/pt.js"></script>
+  <script src="locales/pl.js"></script>
+  <script src="locales/uk.js"></script>
+  <script src="locales/sr.js"></script>
+  <script src="locales/hr.js"></script>
+  <script src="locales/bg.js"></script>
+  <script src="locales/zh.js"></script>
+
+  <script src="js/i18n.js"></script>
+  <script src="js/luna.js"></script>
+  <script src="js/platform.js"></script>
+  <script src="js/store.js"></script>
+  <script src="js/settings.js"></script>
+  <script src="js/dialog.js"></script>
+  <script src="js/menu.js"></script>
+  <script src="js/dock.js"></script>
+  <script src="js/app.js"></script>
+</body>
+</html>

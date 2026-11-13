@@ -1,0 +1,8 @@
+{
+  "name": "webocu.dock.service",
+  "version": "0.3.2",
+  "description": "Helper service for WebOCU Dock",
+  "main": "service.js",
+  "license": "MIT",
+  "private": true
+}

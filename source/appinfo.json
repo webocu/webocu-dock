@@ -1,0 +1,22 @@
+{
+  "id": "webocu.dock",
+  "version": "0.3.2",
+  "vendor": "etix",
+  "type": "web",
+  "main": "index.html",
+  "title": "WebOCU Dock",
+  "appDescription": "WebOS Custom UI app launcher",
+  "icon": "icons/icon.png",
+  "largeIcon": "icons/largeIcon.png",
+  "iconColor": "#303030",
+  "resolution": "1920x1080",
+  "defaultWindowType": "popup",
+  "transparent": true,
+  "noSplashOnLaunch": true,
+  "spinnerOnLaunch": false,
+  "networkStableTimeout": 0,
+  "lockable": false,
+  "supportQuickStart": false,
+  "disableBackHistoryAPI": true,
+  "handlesRelaunch": false
+}

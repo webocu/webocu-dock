@@ -1,0 +1,37 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+# A newer push to the same branch or pull request makes the older run pointless.
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  lint:
+    name: Lint
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: JS syntax, manifests, version, i18n, guard checks
+        run: make lint
+
+  build:
+    name: Build .ipk
+    runs-on: ubuntu-latest
+    needs: lint
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build the package
+        run: make build
+      - uses: actions/upload-artifact@v4
+        with:
+          name: webocu.dock-ipk
+          path: dist/*.ipk
+          if-no-files-found: error

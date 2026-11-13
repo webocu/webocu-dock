@@ -1,0 +1,10 @@
+{
+  "id": "webocu.dock.service",
+  "description": "Helper service for WebOCU Dock",
+  "services": [
+    {
+      "name": "webocu.dock.service",
+      "description": "App list, app launch, icons and the app's own maintenance"
+    }
+  ]
+}

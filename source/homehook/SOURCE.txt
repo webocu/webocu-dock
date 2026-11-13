@@ -1,0 +1,18 @@
+Source of the binaries in this folder
+=====================================
+
+libinputhookpp.so   GPL-3.0
+  sha256 de2c155a598827e7b31b2fa2cfe80e1cc7ad9347ccdd16f1c2aeb9bc0db1b49d
+  Corresponding source:
+    https://github.com/sundermann/inputhookpp          (GPL-3.0)
+    https://github.com/Simon34545/lginputhook          (the Input Hook app it is built in; BSD-3-Clause)
+  The file is unmodified, as shipped by the Input Hook app (org.webosbrew.inputhook, main branch, October 2026).
+  License text: ../licenses/inputhookpp-GPL-3.0.txt
+
+ezinject            zlib-style
+  sha256 d2def5b3f68a415cf5a4a747ab70115e70a82f721bafbcc0d9c5a7bd5c161160
+  Source: https://github.com/smx-smx/ezinject
+  The file is unmodified. License text: ../licenses/ezinject-COPYING.txt
+
+If you cannot get the source from those addresses, ask in the issues of
+https://github.com/webocu/webocu-dock and a copy will be provided (see THIRD_PARTY_NOTICES.md).

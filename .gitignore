@@ -1,0 +1,22 @@
+# temporary: build stage (make clean)
+build/
+
+# temporary: screenshots and test artefacts (make clean)
+# Keep test/shots directory but ignore contents
+test/*
+!test/shots/
+test/shots/*
+!test/shots/.gitkeep
+
+# packaged ipk (make distclean)
+dist/
+
+# misc
+.DS_Store
+Thumbs.db
+*.log
+node_modules/
+
+# IDEs
+.vscode
+.idea

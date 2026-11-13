@@ -1,0 +1,10 @@
+# Normalise line endings: the scripts run on the TV and in Linux containers.
+* text=auto eol=lf
+
+# Binary files: no diffs, no conversions.
+*.gif binary
+*.png binary
+*.ico binary
+*.so binary
+*.ipk binary
+source/homehook/ezinject binary

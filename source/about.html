@@ -1,0 +1,43 @@
+<!-- =========================================================================
+     Text of the About section of the Settings window. This is a plain HTML
+     fragment, not a page: it is read at runtime (Platform.loadText) and dropped
+     into the window, so it can be edited without touching any JavaScript.
+
+     Keep it language-independent — names, links and handles read the same in
+     every language, and the window switches languages around this text.
+
+     {APP_ID} is replaced with the application ID the TV runs the app under.
+
+     Tags the stylesheet knows: h2, p, ul/li, b, a, code (see .about in
+     css/app.css). Links are not clickable on a TV, so write every address out
+     in full as the caption. The href is deliberately a dead one (the app id),
+     and menu.js swallows a click on it.
+     ========================================================================= -->
+
+<p>WebOCU — WebOS Custom UI. A dock of your apps for webOS TV, over the picture</p>
+
+<h2>Author</h2>
+<p>etix</p>
+
+<h2>License</h2>
+<p><a href="webocu.dock">MIT License</a> — free to use, modify and distribute, with attribution</p>
+<h2>Project GitHub</h2>
+<p><a href="webocu.dock">https://github.com/webocu/webocu-dock</a></p>
+<h2>Homebrew Channel</h2>
+<p><a href="webocu.dock">https://webocu.github.io</a></p>
+<h2>Related project</h2>
+<p><a href="webocu.dock">https://github.com/webocu/webocu-settings</a></p>
+
+<h2>Credits</h2>
+<p>The HOME button feature is adapted from Hearth (MIT): github.com/rudra-avatar/Hearth</p>
+<p>It uses the input hook library of Input Hook (GPL-3.0), source: github.com/sundermann/inputhookpp and github.com/Simon34545/lginputhook</p>
+<p>and the ezinject injector (zlib): github.com/smx-smx/ezinject</p>
+<p>All notices: THIRD_PARTY_NOTICES.md in the project</p>
+
+<h2>Community</h2>
+<p><a href="webocu.dock">4pda.to/forum</a></p>
+<p><a href="webocu.dock">webos-forums.ru</a></p>
+<p><a href="webocu.dock">webosbrew.org</a></p>
+
+<h2>Application ID</h2>
+<p><code id="currentAppId">{APP_ID}</code></p>

@@ -1,0 +1,16 @@
+# webOS TV CLI (ares-*) in a container: no local Node.js needed.
+FROM node:20-alpine
+
+# bash for the scripts, openssh-client because ares-install/ares-launch reach
+# the TV over SSH, zip/tar for building the ipk, python3 for helper scripts.
+# sshpass: a rooted TV is reached with the password from the device profile, and
+# ssh only takes one from a terminal (tools/install.sh).
+RUN apk add --no-cache bash openssh-client sshpass zip tar python3 curl
+
+# ares-cli was renamed to @webos-tools/cli. If that package is unavailable,
+# uncomment the second line (webOS OSE fork, ares-* compatible).
+RUN npm install -g @webos-tools/cli --unsafe-perm=true --allow-root
+# RUN npm install -g @webosose/ares-cli --unsafe-perm=true --allow-root
+
+WORKDIR /app
+CMD ["bash"]

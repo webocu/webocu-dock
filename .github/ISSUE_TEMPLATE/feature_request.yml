@@ -1,0 +1,16 @@
+name: Feature request
+description: An idea for the dock or its Settings window
+labels: [enhancement]
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: What do you want to do
+      description: The situation first, the wished-for feature second.
+    validations:
+      required: true
+  - type: textarea
+    id: idea
+    attributes:
+      label: What could it look like
+      description: A setting, a quick button, a key — anything concrete helps.

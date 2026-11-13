@@ -1,0 +1,1058 @@
+/* =========================================================================
+   WebOCU Dock — layout for 1920x1080 (webOS TV / Chromium 87)
+
+   TV performance rules kept here:
+   - animate transform and opacity only;
+   - no box-shadow on moving elements;
+   - backdrop-filter is off by default (expensive on TV GPUs).
+   ========================================================================= */
+
+:root {
+  --ui-scale: 1;
+  /* Solid until Settings -> Appearance -> Opacity says otherwise (it rewrites
+     this on <html>). Never 0: the lowest stop of the slider is 30%. */
+  --ui-opacity: 1;
+
+  --panel-1: rgba(16, 20, 28, 0.94);
+  --panel-2: rgba(10, 13, 19, 0.97);
+  --rail-bg: rgba(8, 10, 15, 0.6);
+
+  --text: #f2f5f9;
+  --text-dim: #9aa4b4;
+  --text-mute: #66707f;
+
+  /* Highlight colour of the whole app. Settings -> Appearance -> Accent colour
+     rewrites it on <html>, so this is the value of a fresh install (magenta). */
+  --accent: #f21b9c;
+  --danger: #e0574d;
+  --line: rgba(255, 255, 255, 0.08);
+
+  --focus: #ffffff;
+  --radius: 18px;
+
+  /* Surfaces that the theme option repaints (see the palettes at the end). */
+  --hover: rgba(255, 255, 255, 0.1);
+  --hover-soft: rgba(255, 255, 255, 0.08);
+  --track: rgba(255, 255, 255, 0.2);
+  --track-hot: rgba(255, 255, 255, 0.32);
+  --knob: #ffffff;
+  --text-hot: #ffffff;
+  --dialog-1: #151a24;
+  --dialog-2: #0d1117;
+  --scrim: rgba(3, 5, 8, 0.62);
+  --toast-bg: rgba(5, 7, 11, 0.88);
+  /* The Soft and Text styles of the name (Appearance -> Hints): a see-through ground
+     and the shadow that keeps bare letters legible over any picture. */
+  --hint-bg-soft: rgba(5, 7, 11, 0.55);
+  --hint-shadow: 0 1px 3px rgba(0, 0, 0, 0.9), 0 0 12px rgba(0, 0, 0, 0.7);
+  --danger-bg: rgba(224, 87, 77, 0.22);
+  --danger-text: #ffd9d5;
+
+  /* The Settings window: a fixed box in the middle of the screen. Wide enough
+     for the longest labels of the twelve languages next to their values, low
+     enough to leave the picture visible above and below it. The height also
+     keeps the balloon clear of it: the balloon stands --safe (60px) from the
+     top or bottom edge and is about 74px tall, so the window may start no
+     higher than ~150px (760 leaves ~26px of air at both edges). */
+  --win-w: 1280px;
+  --win-h: 760px;
+  /* The dock. A tile is the focus target of one app: the 80px icon and the air
+     its focus ring needs. Six rows of tiles plus the Settings button below them
+     fit 1080 with room to spare, which is why six is the most rows it shows. */
+  /* How far the dock stands off the left edge: Settings -> Appearance -> Offset
+     from the edge rewrites this on <html>. */
+  --dock-x: 0px;
+  --dock-pad: 16px;
+  --tile: 112px;
+  --tile-gap: 12px;
+  --icon: 80px;
+  /* A button of the foot when both share the width of a single column. */
+  --foot-half: calc((var(--tile) - var(--tile-gap)) / 2);
+  /* How solid the picture behind each column is: the main column (the dock and
+     the rows of the window, Settings -> Appearance -> Main background image) and
+     the rail of the window (-> Rail background image), a slider and a variable
+     each. Zero here and data-bg="off" / data-bg-rail="off" on <html> go
+     together: without them the columns are painted from the palette alone. */
+  --bg-opacity: 0;
+  --bg-opacity-rail: 0;
+  --rail-w: 132px;
+  --row-h: 96px;
+  /* Metrics of everything inside the pane, in one place. */
+  --pane-pad: 40px;
+  --title-size: 42px;
+  --sub-size: 24px;
+  --label-size: 30px;
+  --safe: 60px;
+  /* Height of the heading band. The rail keeps its icon in the same band, so
+     both columns are cut by one line: the section icons start under it. */
+  --head-h: 160px;
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+/* Transparent by default so the underlying TV picture shows through
+   (appinfo.json has "transparent": true). */
+html, body {
+  width: 100%; height: 100%;
+  overflow: hidden;
+  background: transparent;
+  color: var(--text);
+  font-family: "LG Smart UI", "Museo Sans", "Segoe UI", Roboto, Arial, sans-serif;
+  font-size: 28px;
+  line-height: 1.3;
+  -webkit-user-select: none;
+  user-select: none;
+  cursor: default;
+}
+
+.backdrop { position: fixed; inset: 0; background: transparent; }
+
+/* Desktop browser and emulator: fake "content underneath" so contrast can be
+   judged. Gradients rather than a file -- nothing to ship, nothing to keep in
+   step with the layout. Warm throughout: amber and ember glows over broad
+   diagonal bands, so a panel that is cool and grey at every accent has something
+   to stand off. Never drawn on the TV, where the video shows through instead. */
+html[data-platform="browser"] .backdrop {
+  background:
+    radial-gradient(circle at 26% 32%, rgba(255, 148, 42, 0.38), transparent 46%),
+    radial-gradient(circle at 68% 72%, rgba(214, 74, 46, 0.32), transparent 44%),
+    radial-gradient(circle at 84% 14%, rgba(247, 196, 122, 0.22), transparent 38%),
+    repeating-linear-gradient(45deg, #241a13 0 40px, #17100b 40px 80px);
+}
+
+/* On the TV the backdrop only exists while the dock or the Settings window is up
+   (app.js keeps data-shown): a hidden app must not hold a full-screen layer that
+   catches the pointer meant for whatever is in front. The browser keeps its
+   pattern, which is only there to judge the panel against. */
+html[data-platform="webos"][data-shown="off"] .backdrop { display: none; }
+
+/* ---------- UI layer ---------- */
+/* Everything of ours lives in here, so one opacity on the layer is the
+   transparency of the whole app — panel, dialog and balloon fade together
+   instead of the panel alone going see-through while a toast stays solid.
+   The layer already has a transform, so it is composited either way: the
+   opacity costs nothing extra and nothing animates it. */
+.ui {
+  position: fixed; top: 0; left: 0;
+  width: 1920px; height: 1080px;
+  transform: scale(var(--ui-scale));
+  transform-origin: 0 0;
+  opacity: var(--ui-opacity);
+  pointer-events: none;              /* enabled per interactive element */
+}
+.ui * { pointer-events: auto; }
+
+
+
+/* ---------- Settings window ---------- */
+/* A box of a fixed size in the middle of the screen: the window is opened on
+   purpose and closed with Back, and nothing behind it needs to stay in reach
+   while it is up (the dock is hidden for as long). */
+.menu {
+  position: absolute; left: 50%; top: 50%;
+  width: var(--win-w); height: var(--win-h);
+  margin: calc(var(--win-h) / -2) 0 0 calc(var(--win-w) / -2);
+  visibility: hidden;
+}
+.menu.is-open { visibility: visible; }
+
+/* The hairline is what separates the window from the video behind it: over a
+   bright picture the gradient alone has no edge to speak of.
+
+   overflow: hidden is what holds the two columns inside the rounded corners,
+   the background pictures included. Nothing inside is meant to paint outside
+   the window -- the dialog and the toast are siblings of .menu, not children. */
+.menu__panel {
+  position: absolute; inset: 0;
+  display: flex;
+  overflow: hidden;
+  border-radius: var(--radius);
+  border: 1px solid var(--line);
+  background: linear-gradient(180deg, var(--panel-1), var(--panel-2));
+  transform: scale(0.96);
+  opacity: 0;
+  transition: transform 200ms cubic-bezier(0.22, 0.61, 0.36, 1), opacity 160ms linear;
+}
+.menu.is-open .menu__panel { transform: scale(1); opacity: 1; }
+
+/* ---------- Dock ---------- */
+/* A popup at the left edge (or the right one: Appearance -> Position, data-side
+   on <html>, every rule below has its mirror image), centred on the height of the screen (dock.js moves
+   it off the centre with a margin: Appearance -> Vertical position). The box is
+   as tall as the screen so the panel can be centred in it and the balloons can
+   be placed against the same top; only the panel and the balloons are drawn. */
+.dock {
+  position: absolute; left: var(--dock-x); top: 0; bottom: 0;
+  display: flex; align-items: center;
+  visibility: hidden;
+  pointer-events: none;
+}
+.dock.is-open { visibility: visible; }
+.dock > * { pointer-events: auto; }
+
+.dock__panel {
+  /* Rows on screen, set by dock.js: the height of the grid reads it. */
+  --rows: 1;
+  position: relative;
+  display: flex; flex-direction: column;
+  padding: var(--dock-pad);
+  border-radius: var(--radius);
+  border: 1px solid var(--line);
+  overflow: hidden;
+  background: linear-gradient(180deg, var(--panel-1), var(--panel-2));
+  /* The start of the entrance (Appearance -> Dock -> Entrance effect, data-dock-effect
+     on <html>) and where it ends. Every state spells the same list of functions,
+     translate and scale, so a transition goes from one to the other function by
+     function. By default the panel comes out from behind its own edge. */
+  transform: translate(calc(-100% - var(--dock-x)), 0) scale(1);
+  opacity: 0;
+  transition: transform 240ms cubic-bezier(0.22, 0.61, 0.36, 1), opacity 200ms linear;
+}
+.dock.is-open .dock__panel { transform: translate(0, 0) scale(1); opacity: 1; }
+/* Put back to the start without a transition while the app is hidden (dock.js rest()). */
+.dock.is-snap .dock__panel { transition: none; }
+
+/* At the right edge: the box is anchored by its right side, the panel slides in
+   from beyond that edge, and the balloons stand to the left of it. The foot
+   keeps its place at the right of the panel. */
+html[data-side="right"] .dock { left: auto; right: var(--dock-x); }
+html[data-side="right"] .dock__panel { transform: translate(calc(100% + var(--dock-x)), 0) scale(1); }
+html[data-side="right"] .dock.is-open .dock__panel { transform: translate(0, 0) scale(1); }
+
+/* The other entrances. They come after the mirror rules above, which they replace, and
+   they lose to the open state, which is the more specific. The three that come from beyond
+   an edge of the screen — the opposite one, the top, the bottom — start the panel its own
+   size plus its distance from that edge away (dock.js placePanel() writes
+   --panel-left/-right/-top/-bottom), so it is out of the picture whatever the offsets,
+   the side and the shift are. The opposite edge is the right one for a dock at the left
+   and the left one for a dock at the right: the start is a variable of the panel, set by
+   the side, so the rule that uses it stays as weak as the rest. */
+.dock__panel { --opp-x: calc(100% + var(--panel-right, 0px)); }
+html[data-side="right"] .dock__panel { --opp-x: calc(-100% - var(--panel-left, 0px)); }
+html[data-dock-effect="opposite"] .dock__panel { transform: translate(var(--opp-x), 0) scale(1); }
+html[data-dock-effect="top"] .dock__panel { transform: translate(0, calc(-100% - var(--panel-top, 0px))) scale(1); }
+html[data-dock-effect="bottom"] .dock__panel { transform: translate(0, calc(100% + var(--panel-bottom, 0px))) scale(1); }
+/* In place, and only the opacity moves; or grown a little from the edge it stands at. */
+html[data-dock-effect="fade"] .dock__panel { transform: translate(0, 0) scale(1); }
+html[data-dock-effect="pop"] .dock__panel { transform: translate(0, 0) scale(0.85); transform-origin: 0 50%; }
+html[data-side="right"][data-dock-effect="pop"] .dock__panel { transform-origin: 100% 50%; }
+/* There at once. */
+html[data-dock-effect="none"] .dock__panel { transition: none; }
+
+/* The visible rows: dock.js sets --rows to the number of rows the list has, at
+   most what Appearance -> Rows allows, so a short list makes a short panel. One
+   to seven columns (Appearance -> Columns, data-cols on <html>, mirrored in
+   --cols so the widths below are one rule for every count). */
+html { --cols: 1; }
+html[data-cols="2"] { --cols: 2; }
+html[data-cols="3"] { --cols: 3; }
+html[data-cols="4"] { --cols: 4; }
+html[data-cols="5"] { --cols: 5; }
+html[data-cols="6"] { --cols: 6; }
+html[data-cols="7"] { --cols: 7; }
+.dock__grid {
+  position: relative;
+  width: calc(var(--cols) * var(--tile) + (var(--cols) - 1) * var(--tile-gap));
+  height: calc(var(--rows) * var(--tile) + (var(--rows) - 1) * var(--tile-gap));
+  /* The rows scrolled away stop here. Nothing of a tile paints outside its own
+     box (the focus ring is drawn inside it), so nothing visible is cut. */
+  overflow: hidden;
+}
+
+.dock__scroll {
+  position: absolute; left: 0; top: 0;
+  display: grid;
+  grid-template-columns: repeat(var(--cols), var(--tile));
+  grid-auto-rows: var(--tile);
+  gap: var(--tile-gap);
+  transition: transform 180ms ease-out;
+}
+
+.dock__tile {
+  position: relative;
+  width: var(--tile); height: var(--tile);
+  display: flex; align-items: center; justify-content: center;
+  border-radius: 20px;
+  color: var(--text-dim);
+}
+.dock__tile.is-focused { background: var(--hover); color: var(--text-hot); }
+.dock__tile.is-focused::after {
+  content: ""; position: absolute; inset: 0;
+  border: 3px solid var(--focus); border-radius: 20px;
+  pointer-events: none;
+}
+
+.dock__icon {
+  width: var(--icon); height: var(--icon);
+  display: flex; align-items: center; justify-content: center;
+  border-radius: 18px;
+  overflow: hidden;
+}
+.dock__img { width: 100%; height: 100%; object-fit: contain; }
+/* An app whose icon could not be read: its first letter on a colour of its own
+   (dock.js picks it), the way a launcher shows a missing icon. */
+.dock__letter {
+  width: 100%; height: 100%;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 40px; font-weight: 700; color: #ffffff;
+}
+
+/* The foot: Home and Settings side by side below the rows, fenced off by a
+   hairline, never scrolled away with them. Positioned, because dock.js places
+   the name balloon from the offsets of the buttons inside it.
+
+   The buttons are small and stand at the right edge of the panel, for every
+   number of columns: the foot is then the same height whatever the width of the
+   panel, and a wide panel does not turn it into a row of big keys. Each button
+   is half a tile wide (less the gap), so with one column two of them fill exactly
+   the width of the column, and all four (from two columns up) the width of two. */
+.dock__foot {
+  position: relative;
+  display: flex; justify-content: flex-end;
+  gap: var(--tile-gap);
+  margin-top: calc(var(--tile-gap) * 2);
+}
+.dock__foot::before {
+  content: ""; position: absolute; left: 8px; right: 8px; top: calc(var(--tile-gap) * -1 - 1px);
+  border-top: 1px solid var(--line);
+}
+/* An empty quick button, or one that has no room (buttons 1 and 2 with one
+   column): dock.js sets the class, the foot closes up over the gap. */
+.dock__foot .dock__tile--off { display: none; }
+.dock__foot .dock__tile,
+.dock__sub .dock__tile {
+  width: var(--foot-half); height: var(--foot-half);
+  border-radius: 14px;
+}
+.dock__foot .dock__tile.is-focused::after,
+.dock__sub .dock__tile.is-focused::after { border-radius: 14px; }
+.dock__foot .dock__gear svg,
+.dock__sub .dock__gear svg { width: 28px; height: 28px; }
+
+/* The submenu of the Submenu quick button: a panel of the same make as the dock,
+   smaller, one column of one to eight tiles of the foot's size, the first at the
+   top. It is a child of .dock (not of the panel, which clips) and dock.js places
+   it — its bottom edge level with the button that opened it, beside the dock on
+   the side of the picture (the other side when there is no room), wherever
+   Appearance put the dock — so only the layout of the column is here. */
+.dock__sub {
+  position: absolute; left: 0; top: 0;
+  width: max-content;
+  display: flex; flex-direction: column;
+  gap: var(--tile-gap);
+  padding: var(--dock-pad);
+  border-radius: var(--radius);
+  border: 1px solid var(--line);
+  overflow: hidden;
+  background: linear-gradient(180deg, var(--panel-1), var(--panel-2));
+  visibility: hidden; opacity: 0;
+  transform: translateX(-8px);
+  transition: opacity 140ms linear, transform 140ms ease-out, visibility 0s linear 140ms;
+}
+.dock__sub .dock__tile { flex: none; }
+.dock__sub.is-on {
+  visibility: visible; opacity: 1;
+  transform: translateX(0);
+  transition-delay: 0s;
+}
+html[data-side="right"] .dock__sub { transform: translateX(8px); }
+html[data-side="right"] .dock__sub.is-on { transform: translateX(0); }
+.dock__gear { font-size: 48px; line-height: 1; display: flex; }
+.dock__gear svg { width: 48px; height: 48px; }
+
+/* The clock above the rows and the date under the foot, each fenced off by a
+   hairline like the foot itself (Settings -> General -> Clock). One line each,
+   never wrapped: a long weekday is cut rather than widening a one-tile panel.
+   Positioned, because dock.js reads the offsets of what lies below them. */
+.dock__clock,
+.dock__date {
+  position: relative;
+  text-align: center;
+  white-space: nowrap;
+  overflow: hidden;
+  color: var(--text);
+  font-variant-numeric: tabular-nums;
+}
+/* Five sizes of each band (Settings -> General -> Clock and date: XS S M L XL, set
+   on <html> by data-clock-size / data-date-size). The scale multiplies the size
+   and the line height both, so the band stays as tight as it was at M. */
+html[data-clock-size="xs"] { --clock-scale: 0.8; }
+html[data-clock-size="s"] { --clock-scale: 0.9; }
+html[data-clock-size="l"] { --clock-scale: 1.1; }
+html[data-clock-size="xl"] { --clock-scale: 1.25; }
+html[data-date-size="xs"] { --date-scale: 0.8; }
+html[data-date-size="s"] { --date-scale: 0.9; }
+html[data-date-size="l"] { --date-scale: 1.1; }
+html[data-date-size="xl"] { --date-scale: 1.25; }
+.dock__clock {
+  font-size: calc(34px * var(--clock-scale, 1)); line-height: calc(40px * var(--clock-scale, 1));
+  margin-bottom: calc(var(--tile-gap) * 2);
+}
+.dock__date {
+  font-size: calc(20px * var(--date-scale, 1)); line-height: calc(24px * var(--date-scale, 1));
+  margin-top: calc(var(--tile-gap) * 2);
+}
+.dock__clock::after,
+.dock__date::before {
+  content: ""; position: absolute; left: 8px; right: 8px;
+  border-top: 1px solid var(--line);
+}
+.dock__clock::after { bottom: calc(var(--tile-gap) * -1 - 1px); }
+.dock__date::before { top: calc(var(--tile-gap) * -1 - 1px); }
+html[data-clock="off"] .dock__clock,
+html[data-date="off"] .dock__date { display: none; }
+html[data-clock-accent="on"] .dock__clock { color: var(--accent); }
+html[data-date-accent="on"] .dock__date { color: var(--accent); }
+html[data-clock-bold="on"] .dock__clock,
+html[data-clock-bold="on"] .dock__date { font-weight: 700; }
+
+/* Loading, empty and failed: one tile-sized placeholder, and the words in the
+   note balloon beside it. */
+.dock__state {
+  width: var(--tile); height: var(--tile);
+  display: flex; align-items: center; justify-content: center;
+}
+.dock__glyph {
+  width: 40px; height: 40px;
+  border-radius: 50%;
+  border: 3px solid var(--track);
+}
+.dock__state--loading .dock__glyph {
+  border-top-color: var(--accent);
+  animation: toast-spin 900ms linear infinite;
+}
+.dock__state--failed .dock__glyph { border-color: var(--danger); }
+
+/* The name of the focused tile, and what the placeholder means, beside the panel
+   over the picture: the placeholder's note stays here, level with its tile, and
+   so does the name until dock.js places it (the --tile modifiers further down,
+   against the tile itself). */
+.dock__label,
+.dock__note {
+  position: absolute; left: calc(100% + 20px);
+  max-width: 640px;
+  padding: 14px 28px;
+  border-radius: 999px;
+  background: var(--toast-bg);
+  border: 1px solid var(--line);
+  font-size: 28px;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  transform: translate(-8px, -50%);
+  opacity: 0;
+  transition: opacity 120ms linear, transform 120ms ease-out, top 160ms ease-out, left 160ms ease-out;
+  pointer-events: none;
+}
+.dock__label.is-on { opacity: 1; transform: translate(0, -50%); }
+/* Several lines when it takes them: the way to root is a sentence of its own.
+   max-content because an absolute box shrinks to the width of the dock it is
+   placed against, which would wrap the text after every word. */
+.dock__note {
+  width: max-content;
+  max-width: 560px;
+  border-radius: 18px;
+  white-space: normal;
+  font-size: 25px; color: var(--text-dim);
+}
+.dock__note.is-on { opacity: 1; transform: translate(0, -50%); }
+html[data-side="right"] .dock__label,
+html[data-side="right"] .dock__note {
+  left: auto; right: calc(100% + 20px);
+  transform: translate(8px, -50%);
+}
+html[data-side="right"] .dock__label.is-on,
+html[data-side="right"] .dock__note.is-on { transform: translate(0, -50%); }
+/* How the name comes up (Appearance -> Hints -> Effect, data-hint-effect on <html>):
+   two numbers read by every placement below — how far it slides in from, as a
+   multiple of the 6-8px it always did, and the size it grows from. Plain variables
+   and no `scale` property, which an older Chromium on a TV may not know. Every state
+   spells the same list of functions (translate, scale), so the transition goes from
+   one to the other function by function. */
+html { --hint-slide: 1; --hint-pop: 1; }
+html[data-hint-effect="fade"] { --hint-slide: 0; --hint-pop: 1; }
+html[data-hint-effect="pop"] { --hint-slide: 0; --hint-pop: 0.85; }
+html[data-hint-effect="none"] { --hint-slide: 0; --hint-pop: 1; }
+/* Nothing to fade or grow: only the glide after the focus stays. */
+html[data-hint-effect="none"] .dock__label { transition: top 160ms ease-out, left 160ms ease-out; }
+/* The name of an item of the submenu stands beside its column, level with the
+   icon, on the side away from the dock. dock.js sets left (and right: auto, which
+   beat the placement beside the dock panel above, at the right edge too) to the
+   edge the name hangs from: its own left edge, or — when the column is at the
+   left of the dock, so the name goes further left — its right edge. */
+.dock__label--sub,
+html[data-side="right"] .dock__label--sub { transform: translate(0, -50%) scale(var(--hint-pop, 1)); }
+.dock__label--sub.is-on,
+html[data-side="right"] .dock__label--sub.is-on { transform: translate(0, -50%) scale(1); }
+.dock__label--sub-left,
+html[data-side="right"] .dock__label--sub-left { transform: translate(-100%, -50%) scale(var(--hint-pop, 1)); }
+.dock__label--sub-left.is-on,
+html[data-side="right"] .dock__label--sub-left.is-on { transform: translate(-100%, -50%) scale(1); }
+/* The name of a tile of the dock stands against the tile: under it, or over it when
+   the screen ends below. dock.js sets left (centred on the tile, kept on screen), top
+   (the tile's lower or upper edge plus a gap) and right: auto, so the side of the dock
+   the balloon had by default is of no matter, and the width is the text's own — an
+   absolute box would otherwise shrink to what is left of the dock to its right. */
+.dock__label--tile,
+.dock__label--tile-up { width: max-content; }
+.dock__label--tile,
+html[data-side="right"] .dock__label--tile { transform: translate(0, calc(6px * var(--hint-slide, 1))) scale(var(--hint-pop, 1)); }
+.dock__label--tile.is-on,
+html[data-side="right"] .dock__label--tile.is-on { transform: translate(0, 0) scale(1); }
+.dock__label--tile-up,
+html[data-side="right"] .dock__label--tile-up { transform: translate(0, calc(-100% + 6px * var(--hint-slide, 1))) scale(var(--hint-pop, 1)); }
+.dock__label--tile-up.is-on,
+html[data-side="right"] .dock__label--tile-up.is-on { transform: translate(0, -100%) scale(1); }
+/* Beside the panel of the dock (Appearance -> Hints -> Placement: Next to the dock):
+   dock.js sets left (the name's own left edge, on whichever side of the panel there is
+   room), top (the middle of the tile, kept on screen) and right: auto. --dock is the
+   name at the right of the panel, --dock-left the one at its left; they differ in the
+   way the name slides in. */
+.dock__label--dock,
+.dock__label--dock-left { width: max-content; }
+.dock__label--dock,
+html[data-side="right"] .dock__label--dock { transform: translate(calc(-8px * var(--hint-slide, 1)), -50%) scale(var(--hint-pop, 1)); }
+.dock__label--dock-left,
+html[data-side="right"] .dock__label--dock-left { transform: translate(calc(8px * var(--hint-slide, 1)), -50%) scale(var(--hint-pop, 1)); }
+.dock__label--dock.is-on,
+.dock__label--dock-left.is-on,
+html[data-side="right"] .dock__label--dock.is-on,
+html[data-side="right"] .dock__label--dock-left.is-on { transform: translate(0, -50%) scale(1); }
+
+/* The look of the name (Appearance -> Hints -> Style, data-hint-style on <html>). Pill
+   is the capsule above and needs no rule. Only the name, never the note of the
+   placeholder, which says what the dock is doing rather than what a tile is called. */
+html[data-hint-style="soft"] .dock__label { background: var(--hint-bg-soft); border-color: transparent; }
+html[data-hint-style="solid"] .dock__label { background: var(--accent); border-color: var(--accent); color: #ffffff; }
+html[data-hint-style="text"] .dock__label {
+  background: transparent; border-color: transparent;
+  font-weight: 700; text-shadow: var(--hint-shadow);
+}
+html[data-hint-style="compact"] .dock__label { font-size: 22px; padding: 8px 18px; }
+/* The accent colour of the theme for the letters and for the frame, a switch each.
+   Solid is filled with it already, so it takes neither. The frame is one pixel wider
+   by an inset shadow, which draws inside the box and moves nothing. */
+html[data-hint-text="on"]:not([data-hint-style="solid"]) .dock__label { color: var(--accent); }
+html[data-hint-border="on"]:not([data-hint-style="solid"]) .dock__label {
+  border-color: var(--accent); box-shadow: inset 0 0 0 1px var(--accent);
+}
+
+/* Pictures over the palette behind the columns (Settings -> Appearance -> Main
+   background image for the dock and the rows of the window, Rail background
+   image for the rail of the window). Four files, one per column per theme, and the
+   theme is the mode: the contrast switch keeps its own palette for everything drawn
+   on top. The four files are art rather than anything generated: replacing one of
+   them is a change of one file and no code at all.
+
+   A column at a time, because the two are two settings: --bg-opacity with
+   data-bg for the rows, --bg-opacity-rail with data-bg-rail for the rail. Only the
+   opacity and the file differ, so everything else about the layer is written once,
+   for both.
+
+   Scaled to the box, both axes at once, and that is the whole of it. The dock is
+   a different shape for every number of apps and columns, so the picture is
+   stretched or squeezed to fit — evenly, every part of it by the same
+   amount. It used to be cut into pieces instead — a sliced border image, two edges
+   drawn at their own size and the middle stretched over the rest — which held the
+   edges to a fixed width but drew the one picture at two scales at once: straight
+   lines bent where the pieces met, and the pattern bunched up along both borders.
+
+   Nothing enforces any proportions: any picture is scaled to the box, so a
+   photograph works as well.
+
+   The picture is a layer of its own and not the background of the column, because
+   how solid it is has to be a setting: opacity applies to a box, and a
+   background-image cannot be faded on its own. The slider is what writes the
+   variable; the attribute goes off at the bottom of its range, so a column whose
+   slider is down has no layer to composite at all. */
+html[data-bg="on"] .pane,
+html[data-bg-rail="on"] .rail { position: relative; }
+html[data-bg="on"] .pane::before,
+html[data-bg="on"] .dock__panel::before,
+html[data-bg="on"] .dock__sub::before,
+html[data-bg-rail="on"] .rail::before {
+  content: "";
+  position: absolute; top: 0; right: 0; bottom: 0; left: 0;
+  /* Over the palette colour of the column and under everything drawn on it (the
+     bands below are positioned for exactly that). The rounded corners are not
+     this layer's business: .menu__panel and .dock__panel clip them. */
+  z-index: 0;
+  /* The picture fills the layer whatever shape the layer is: 100% on both axes
+     rather than cover, because cover would crop it, and a column that is a tall
+     strip would be showing a sliver of the middle. */
+  background-repeat: no-repeat;
+  background-position: 0 0;
+  background-size: 100% 100%;
+  pointer-events: none;
+}
+html[data-bg="on"] .pane::before,
+html[data-bg="on"] .dock__panel::before,
+html[data-bg="on"] .dock__sub::before {
+  opacity: var(--bg-opacity);
+  background-image: url("../img/pane-dark.png");
+}
+html[data-bg-rail="on"] .rail::before {
+  opacity: var(--bg-opacity-rail);
+  background-image: url("../img/rail-dark.png");
+}
+html[data-bg="on"][data-theme="light"] .pane::before,
+html[data-bg="on"][data-theme="light"] .dock__panel::before,
+html[data-bg="on"][data-theme="light"] .dock__sub::before { background-image: url("../img/pane-light.png"); }
+html[data-bg-rail="on"][data-theme="light"] .rail::before { background-image: url("../img/rail-light.png"); }
+/* The contents of a column with a picture behind it: positioned only so that they
+   paint above it. Nothing moves — the offsets stay where the layout put them. */
+html[data-bg-rail="on"] .rail__head,
+html[data-bg-rail="on"] .rail__items,
+html[data-bg="on"] .dock__grid,
+html[data-bg="on"] .dock__foot,
+html[data-bg="on"] .dock__clock,
+html[data-bg="on"] .dock__date,
+html[data-bg="on"] .pane__head,
+html[data-bg="on"] .rows,
+html[data-bg="on"] .pane__hint { position: relative; z-index: 1; }
+
+
+/* Section rail: the window's icon in the heading band, the sections under it */
+.rail {
+  flex: 0 0 var(--rail-w);
+  display: flex; flex-direction: column;
+  padding: 0 0 28px;
+  background: var(--rail-bg);
+  border-right: 1px solid var(--line);
+}
+/* Same height and the same rule underneath as the heading of the pane, so the
+   two columns share one line and the icons begin below it. */
+.rail__head {
+  flex: 0 0 auto;
+  height: var(--head-h);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 48px; color: var(--accent);
+  border-bottom: 1px solid var(--line);
+}
+.rail__head svg { width: 48px; height: 48px; }
+.rail__items {
+  flex: 1 1 auto; min-height: 0; overflow: hidden;
+  display: flex; flex-direction: column; padding-top: 18px;
+}
+
+.rail__item {
+  position: relative;
+  /* Shrinkable down to 72px, which is an icon and its label and nothing else:
+     that is what lets a panel shortened by the insets keep every section on the
+     rail instead of pushing the last of them past the bottom edge. */
+  flex: 0 1 auto;
+  height: 116px; min-height: 72px;
+  display: flex; flex-direction: column;
+  align-items: center; justify-content: center;
+  gap: 6px;
+  color: var(--text-mute);
+  transition: color 120ms linear, background-color 120ms linear;
+}
+/* About: pushed to the foot of the rail and fenced off from the sections that
+   change something (Settings.sections -> pinBottom). */
+.rail__item--bottom { margin-top: auto; border-top: 1px solid var(--line); }
+.rail__icon { font-size: 40px; line-height: 1; }
+/* The label has to stay inside the focus ring below, so the text is padded away
+   from the edges and cut rather than allowed to spill out of the ring. The short
+   labels in locales/*.js are picked to fit without being cut at all. */
+.rail__label {
+  max-width: 100%;
+  padding: 0 14px;
+  font-size: 17px; letter-spacing: 0.02em;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.rail__item.is-active { color: var(--text); }
+.rail__item.is-active::before {
+  content: ""; position: absolute; left: 0; top: 22px; bottom: 22px;
+  width: 5px; border-radius: 0 3px 3px 0; background: var(--accent);
+}
+.rail__item.is-focused { color: var(--text-hot); background: var(--hover); }
+/* Clear of the marker of the active section on one side and of the neighbouring
+   item on the other: two rings never touch. */
+.rail__item.is-focused::after {
+  content: ""; position: absolute; inset: 6px 8px;
+  border: 3px solid var(--focus); border-radius: 14px;
+}
+
+/* Content pane */
+.pane { flex: 1 1 auto; display: flex; flex-direction: column; min-width: 0; padding: 0 0 28px; }
+.pane__head { height: var(--head-h); padding: 44px var(--pane-pad) 0; border-bottom: 1px solid var(--line); }
+/* The band has a fixed height, so neither line may wrap: on a narrow panel a
+   second line of the title used to push the subtitle through the rule and into
+   the first row. Cut with an ellipsis instead, the way the hint already is. */
+.pane__title {
+  font-size: var(--title-size); font-weight: 600;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.pane__sub {
+  margin-top: 8px; font-size: var(--sub-size); color: var(--text-mute); min-height: 30px;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.pane__hint {
+  padding: 18px var(--pane-pad) 0; font-size: 21px; color: var(--text-mute);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+
+.rows { flex: 1 1 auto; overflow: hidden; position: relative; }
+.rows__scroll { position: absolute; left: 0; right: 0; top: 0; padding: 12px 0; transition: transform 180ms ease-out; }
+
+/* How much of a level is on screen and where in it the view sits. It is a readout
+   and not a control: nothing here takes a click, the focus and the wheel do the
+   moving. It appears the moment a scroll actually moves the list and goes three
+   seconds after the last one (see showScrollBar), so a level that fits on screen
+   never shows one and a level that does not shows it only while it is being read.
+   The fade out is slower than the fade in: coming up it has to keep up with the
+   movement, going away it should not be the thing that catches the eye.
+   6px inside the pane, so it clears the text of the rows and the focus ring. */
+.rows__bar {
+  position: absolute; top: 6px; bottom: 6px; right: 6px; width: 6px;
+  border-radius: 3px;
+  background: var(--track);
+  opacity: 0;
+  transition: opacity 400ms linear;
+  pointer-events: none;
+}
+.rows__bar.is-on { opacity: 1; transition-duration: 120ms; }
+.rows__thumb {
+  position: absolute; left: 0; right: 0;
+  border-radius: 3px;
+  background: var(--text-mute);
+  transition: top 180ms ease-out;
+}
+
+/* Setting row */
+.row {
+  position: relative;
+  min-height: var(--row-h);
+  padding: 0 var(--pane-pad);
+  display: flex; align-items: center;
+  gap: 20px;
+  color: var(--text);
+}
+/* min-width: 0 so a long label wraps inside the row instead of pushing the
+   switch or the value off the narrow panel, and break-word so that a single
+   word too long for the line (Russian is full of them: "Контрастная") breaks
+   instead of sliding out under the switch. */
+.row__label {
+  flex: 1 1 auto; min-width: 0;
+  font-size: var(--label-size);
+  overflow-wrap: break-word;
+}
+.row__value {
+  flex: 0 1 auto; min-width: 0; max-width: 330px;
+  font-size: 28px; color: var(--text-dim); text-align: right;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+/* State that is on: a status the row accents (statusOn). */
+.row__value--on { color: var(--accent); }
+.row__chev { flex: 0 0 auto; font-size: 28px; color: var(--text-mute); }
+/* Reorder row (Settings -> Applications). The handle is the affordance for the
+   place in the list: the row has no value, where it sits is the value. Held, it
+   takes the accent — the colour the editing ring turns. */
+.row__grab { flex: 0 0 auto; font-size: 28px; color: var(--text-mute); }
+.row.is-editing .row__grab { color: var(--accent); }
+/* Two controls on one row (the switch and the handle), so the gap between them
+   is tighter than the gap after the label. A row switched off is dimmed. */
+.row--reorder .toggle { margin-left: 8px; }
+.row--off .row__label,
+.row--off .row__grab { opacity: 0.5; }
+/* Colour swatch of a palette option (Settings -> Appearance -> Accent colour):
+   the row carries the chosen colour, the expanded list carries all of them. */
+.swatch {
+  display: inline-block;
+  width: 26px; height: 26px;
+  margin-right: 14px;
+  border-radius: 50%;
+  vertical-align: -4px;
+  border: 1px solid var(--line);
+}
+.row.is-focused { background: var(--hover-soft); }
+.row.is-focused .row__value,
+.row.is-focused .row__chev,
+.row.is-focused .row__grab { color: var(--text); }
+.row.is-focused .row__value--on { color: var(--accent); }
+/* 6px keeps 12px of air between the rings of two neighbouring rows, and the
+   24px on the sides put the row text 16px inside the ring instead of under it. */
+.row.is-focused::after {
+  content: ""; position: absolute; inset: 6px calc(var(--pane-pad) - 16px);
+  border: 3px solid var(--focus); border-radius: 14px;
+  pointer-events: none;
+}
+.row.is-editing::after { border-color: var(--accent); }
+
+/* Slider takes two lines: the label on top, the track underneath. There is no
+   number on the row — the filled part of the track is the readout. */
+.row--slider { flex-direction: column; align-items: stretch; gap: 16px; padding: 22px var(--pane-pad); }
+.row--slider .row__top { display: flex; align-items: baseline; gap: 20px; }
+.row--slider .slider { flex: 1 1 auto; width: 100%; }
+
+/* Toggle */
+.toggle {
+  flex: 0 0 auto;
+  width: 72px; height: 36px;
+  border-radius: 18px;
+  background: var(--track);
+  position: relative;
+  transition: background-color 140ms linear;
+}
+.toggle::after {
+  content: ""; position: absolute; top: 4px; left: 4px;
+  width: 28px; height: 28px; border-radius: 50%;
+  background: var(--knob);
+  transition: transform 140ms ease-out;
+}
+.toggle.is-on { background: var(--accent); }
+.toggle.is-on::after { transform: translateX(36px); }
+
+/* Slider */
+.slider { flex: 0 0 240px; height: 8px; border-radius: 4px; background: var(--track); position: relative; }
+.slider__fill { position: absolute; left: 0; top: 0; bottom: 0; border-radius: 4px; background: var(--accent); }
+.slider__knob {
+  position: absolute; top: 50%; width: 26px; height: 26px; margin: -13px 0 0 -13px;
+  border-radius: 50%; background: var(--knob);
+  transition: transform 120ms ease-out;
+}
+.row.is-editing .slider__knob { transform: scale(1.25); }
+.row.is-editing .slider { background: var(--track-hot); }
+
+/* Expanded option list */
+.options { padding: 8px var(--pane-pad) 18px var(--pane-pad); }
+.option {
+  position: relative;
+  height: 68px; padding: 0 24px;
+  display: flex; align-items: center; justify-content: space-between;
+  font-size: 27px; color: var(--text-dim);
+  border-radius: 12px;
+}
+/* The ring of an option sits on its box, so the boxes need a gap of their own:
+   without it the ring of the focused option runs into the one above. */
+.option + .option { margin-top: 8px; }
+.option__check { color: var(--accent); font-size: 26px; opacity: 0; }
+.option.is-selected { color: var(--text); }
+.option.is-selected .option__check { opacity: 1; }
+.option.is-focused { color: var(--text-hot); background: var(--hover); }
+.option.is-focused::after {
+  content: ""; position: absolute; inset: 0;
+  border: 3px solid var(--focus); border-radius: 12px;
+}
+
+/* Group subheading and info block */
+.group { padding: 26px var(--pane-pad) 8px; font-size: 22px; letter-spacing: 0.06em; text-transform: uppercase; color: var(--text-mute); }
+.info { padding: 12px var(--pane-pad); font-size: 25px; color: var(--text-dim); }
+.info b { color: var(--text); font-weight: 600; }
+/* A paragraph under paired information: without the gap it reads as the
+   continuation of the last line above it. */
+.info__note { margin-top: 14px; }
+
+/* Free text of the About level: about.html is written by hand, so the styling
+   covers the few tags such a page needs and nothing more. */
+.about { padding: 10px 0 8px; line-height: 1.45; }
+/* A heading in the file reads as a subheading of the panel, like .group. */
+.about h2 {
+  margin: 26px 0 8px;
+  font-size: 22px; font-weight: 400; letter-spacing: 0.06em;
+  text-transform: uppercase; color: var(--text-mute);
+}
+.about h2:first-child { margin-top: 0; }
+.about p { margin: 0 0 14px; overflow-wrap: anywhere; }
+.about ul { margin: 0 0 14px; padding-left: 30px; }
+.about li { margin: 0 0 6px; }
+.about a { color: var(--accent); text-decoration: none; }
+.about code { font-size: 23px; color: var(--text); }
+
+/* ---------- Confirmation dialog ---------- */
+.dialog {
+  position: absolute; inset: 0;
+  display: flex; align-items: center; justify-content: center;
+  background: var(--scrim);
+  opacity: 0;
+  visibility: hidden;
+  transition: opacity 160ms linear;
+}
+.dialog.is-open { opacity: 1; visibility: visible; }
+
+.dialog__box {
+  width: 860px;
+  padding: 56px 60px 44px;
+  border-radius: 24px;
+  background: linear-gradient(180deg, var(--dialog-1), var(--dialog-2));
+  border: 1px solid var(--line);
+  text-align: center;
+  transform: scale(0.96);
+  transition: transform 160ms ease-out;
+}
+.dialog.is-open .dialog__box { transform: scale(1); }
+.dialog__text { font-size: 38px; margin-bottom: 44px; }
+.dialog__buttons { display: flex; gap: 24px; justify-content: center; }
+.dialog__btn {
+  position: relative;
+  min-width: 260px; padding: 24px 40px;
+  border-radius: 14px;
+  background: var(--hover);
+  font-size: 30px;
+}
+.dialog__btn--danger { background: var(--danger-bg); color: var(--danger-text); }
+.dialog__btn.is-focused::after {
+  content: ""; position: absolute; inset: 0;
+  border: 3px solid var(--focus); border-radius: 14px;
+}
+.dialog__btn--danger.is-focused::after { border-color: var(--danger); }
+
+/* ---------- Toast ---------- */
+/* Six places it can appear (Settings -> Dock -> two rows: the edge and the side
+   of it). Both halves of the offset are variables, because the slide-in has to
+   come from the nearest edge: down from the top, up from the bottom.
+   The colour is the theme's, and the transparency of the whole app applies to it
+   as well — the balloon is inside .ui, the layer --ui-opacity fades. */
+.toast {
+  --toast-x: -50%;
+  --toast-in: -20px;
+  position: absolute; top: var(--safe); left: 50%;
+  padding: 18px 34px;
+  border-radius: 999px;
+  background: var(--toast-bg);
+  border: 1px solid var(--line);
+  font-size: 28px;
+  transform: translate(var(--toast-x), var(--toast-in));
+  opacity: 0;
+  transition: opacity 160ms linear, transform 160ms ease-out;
+}
+.toast.is-open { opacity: 1; transform: translate(var(--toast-x), 0); }
+
+/* Left and right are measured from the safe edge, so nothing lands under the
+   overscan of a TV; the centring translate goes away with them. */
+html[data-toast-h="left"] .toast { left: var(--safe); right: auto; --toast-x: 0; }
+html[data-toast-h="right"] .toast { left: auto; right: var(--safe); --toast-x: 0; }
+html[data-toast-v="bottom"] .toast { top: auto; bottom: var(--safe); --toast-in: 20px; }
+
+/* Pending balloon: the spinner is the only sign the TV is still working (a
+   launch, an elevation), so it animates transform alone — nothing else here
+   moves. */
+.toast--busy::before {
+  content: "";
+  display: inline-block;
+  width: 26px; height: 26px;
+  margin: 0 16px -4px 0;
+  border: 3px solid var(--track);
+  border-top-color: var(--accent);
+  border-radius: 50%;
+  animation: toast-spin 900ms linear infinite;
+}
+@keyframes toast-spin { to { transform: rotate(360deg); } }
+
+/* Magic Remote pointer: show the hand cursor only while it is active. */
+html[data-cursor="on"] .dock__tile,
+html[data-cursor="on"] .rail__item,
+html[data-cursor="on"] .row,
+html[data-cursor="on"] .option,
+html[data-cursor="on"] .dialog__btn { cursor: pointer; }
+
+/* ---------- Theme palettes (Settings -> Appearance) ----------------------- */
+/* Two switches, four combinations: `data-theme` is the mode (dark by default,
+   light when the switch is off) and `data-contrast` replaces the surfaces with
+   plain black or plain white. Every block below only overrides colour
+   variables — nothing else in the CSS knows about themes. */
+html[data-theme="light"] {
+  --panel-1: rgba(245, 247, 250, 0.95);
+  --panel-2: rgba(232, 236, 242, 0.97);
+  --rail-bg: rgba(216, 222, 232, 0.72);
+
+  --text: #101620;
+  --text-dim: #46505f;
+  --text-mute: #6b7480;
+  --text-hot: #000000;
+
+  --line: rgba(16, 22, 32, 0.12);
+  --focus: #10161f;
+
+  --hover: rgba(16, 22, 32, 0.1);
+  --hover-soft: rgba(16, 22, 32, 0.07);
+  --track: rgba(16, 22, 32, 0.22);
+  --track-hot: rgba(16, 22, 32, 0.34);
+  --knob: #ffffff;
+
+  --dialog-1: #f7f9fc;
+  --dialog-2: #e6eaf1;
+  --scrim: rgba(16, 22, 32, 0.42);
+  /* A light surface like every other one here: the balloon takes its text colour
+     from the palette (--text), so a dark background left dark text on dark. */
+  --toast-bg: rgba(247, 249, 252, 0.94);
+  --hint-bg-soft: rgba(247, 249, 252, 0.6);
+  --hint-shadow: 0 1px 3px rgba(255, 255, 255, 0.9), 0 0 12px rgba(255, 255, 255, 0.7);
+  --danger-bg: rgba(224, 87, 77, 0.18);
+  --danger-text: #7d1a12;
+}
+
+/* High contrast, whichever mode is underneath: what both sides share is the
+   selector. On this palette the focused item is filled rather than outlined, and
+   a fill that ignored the chosen colour was the one part of the panel the accent
+   setting could not reach — so here the selector *is* the accent. The accent is
+   written onto <html> by the app's settings, so it wins over these lines; the yellow
+   is only what a copy with no choice stored ever sees. */
+html[data-contrast="on"] {
+  --accent: #ffd400;
+  --focus: var(--accent);
+  --hover: var(--accent);
+  --hover-soft: var(--accent);
+
+  /* Filled buttons in both modes, so the pair stays as it is either way. */
+  --danger-bg: #7d1a12;
+  --danger-text: #ffffff;
+}
+
+html[data-contrast="on"][data-theme="dark"] {
+  --panel-1: #000000;
+  --panel-2: #000000;
+  --rail-bg: #000000;
+
+  --text: #ffffff;
+  --text-dim: #ffffff;
+  --text-mute: #d0d0d0;
+  /* Text on top of the filled selector: every accent of the list is bright. */
+  --text-hot: #000000;
+
+  --line: rgba(255, 255, 255, 0.4);
+  --track: rgba(255, 255, 255, 0.45);
+  --track-hot: rgba(255, 255, 255, 0.7);
+  --knob: #ffffff;
+
+  --dialog-1: #000000;
+  --dialog-2: #000000;
+  --scrim: rgba(0, 0, 0, 0.8);
+  --toast-bg: #000000;
+  --hint-bg-soft: rgba(0, 0, 0, 0.7);
+  --hint-shadow: 0 0 4px #000000, 0 0 10px #000000;
+}
+
+html[data-contrast="on"][data-theme="light"] {
+  --panel-1: #ffffff;
+  --panel-2: #ffffff;
+  --rail-bg: #ffffff;
+
+  --text: #000000;
+  --text-dim: #000000;
+  --text-mute: #303030;
+  --text-hot: #000000;
+
+  --line: rgba(0, 0, 0, 0.55);
+  --track: rgba(0, 0, 0, 0.5);
+  --track-hot: rgba(0, 0, 0, 0.75);
+  --knob: #000000;
+
+  --dialog-1: #ffffff;
+  --dialog-2: #ffffff;
+  --scrim: rgba(255, 255, 255, 0.8);
+  --toast-bg: #ffffff;
+  --hint-bg-soft: rgba(255, 255, 255, 0.75);
+  --hint-shadow: 0 0 4px #ffffff, 0 0 10px #ffffff;
+}
+
+/* The focused row is filled on this palette, so its text flips to whatever reads
+   on the fill instead of staying the colour of the surrounding rows. */
+html[data-contrast="on"] .row.is-focused,
+html[data-contrast="on"] .row.is-focused .row__label,
+html[data-contrast="on"] .row.is-focused .row__value,
+html[data-contrast="on"] .row.is-focused .row__chev,
+html[data-contrast="on"] .row.is-focused .row__grab,
+html[data-contrast="on"] .dock__tile.is-focused { color: var(--text-hot); }
+/* Same for the tick of the option under the selector: it is drawn in the accent,
+   which is exactly what the selector is filled with here. */
+html[data-contrast="on"] .option.is-focused .option__check { color: var(--text-hot); }

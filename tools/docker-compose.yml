@@ -1,0 +1,86 @@
+# All development, building and verification happens in containers: no local
+# Node.js is required. The project root is mounted at /app, so every path below
+# is written the way the Makefile writes it.
+#
+# This file lives in tools/, so it is always used as:
+#   docker compose -f tools/docker-compose.yml run --rm lint
+#
+# The Makefile is shorter: make lint / smoke / shots / package / deploy
+
+# Pinned so the compose project does not get named after tools/: the container
+# names and, more importantly, the ares volumes (registered TV + developer key)
+# stay the same across this file moving around.
+name: webocu-dock
+
+services:
+  # Static server for debugging in desktop Chrome: serves source/ as the root.
+  serve:
+    image: python:3.12-alpine
+    working_dir: /app/source
+    command: python -m http.server 8080 --bind 0.0.0.0
+    volumes:
+      - ..:/app:ro
+    ports:
+      - "8080:8080"
+
+  # Generates source/icons/*.png (python stdlib only, no Pillow).
+  icons:
+    image: python:3.12-alpine
+    working_dir: /app
+    command: python tools/make_icons.py
+    volumes:
+      - ..:/app
+
+  # Checks: node --check over every js file plus manifest and i18n validation.
+  lint:
+    image: node:20-alpine
+    working_dir: /app
+    command: sh tools/lint.sh
+    volumes:
+      - ..:/app:ro
+
+  # Headless Chromium: screenshots of the UI without a TV (make shots).
+  shot:
+    image: zenika/alpine-chrome
+    depends_on:
+      - serve
+    entrypoint: ["chromium-browser"]
+    volumes:
+      - ../test/shots:/out
+
+  # Same Chromium, used for the DOM smoke test (make smoke).
+  smoke:
+    image: zenika/alpine-chrome
+    depends_on:
+      - serve
+    entrypoint: ["sh"]
+    command: ["tools/smoke.sh"]
+    working_dir: /app
+    volumes:
+      - ..:/app:ro
+
+  # webOS TV CLI: ipk packaging, install, launch and on-device helpers.
+  ares:
+    build:
+      context: ..
+      dockerfile: tools/Dockerfile.ares
+    working_dir: /app
+    volumes:
+      - ..:/app
+      # Where @webos-tools/cli keeps the registered devices: ~/.webos/tv/
+      # novacom-devices.json. Not ~/.ares — that was the path of the old ares-cli,
+      # and mounting it persisted an empty directory while the profile written by
+      # `make tv-add` died with the container (make tv-list then showed only the
+      # built-in emulator, which needs no config file at all).
+      - ares-config:/root/.webos
+      - ares-ssh:/root/.ssh
+    ports:
+      # ares-inspect uses random ports in the 35000-36000 range.
+      # Mapping the full range so the DevTools URL works on the host.
+      - "35000-36000:35000-36000"
+    tty: true
+    stdin_open: true
+
+volumes:
+  ares-config:
+  ares-ssh:

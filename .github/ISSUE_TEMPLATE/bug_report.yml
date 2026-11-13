@@ -1,0 +1,42 @@
+name: Bug report
+description: Something does not work as described
+labels: [bug]
+body:
+  - type: textarea
+    id: what
+    attributes:
+      label: What happened
+      description: What you did, what you expected, what you got.
+    validations:
+      required: true
+  - type: input
+    id: version
+    attributes:
+      label: WebOCU Dock version
+      description: Settings → About, or the file name of the .ipk.
+      placeholder: "0.3.1"
+    validations:
+      required: true
+  - type: input
+    id: webos
+    attributes:
+      label: TV model and webOS version
+      placeholder: "OLED55C1, webOS 6.x"
+    validations:
+      required: true
+  - type: dropdown
+    id: access
+    attributes:
+      label: How is the dock installed
+      options:
+        - Developer Mode
+        - Rooted TV (webosbrew / Homebrew Channel)
+        - Browser (make dev)
+    validations:
+      required: true
+  - type: textarea
+    id: logs
+    attributes:
+      label: Logs or screenshots
+      description: Console lines starting with `[luna]` or `[webocu-dock]`, if you have them.
+      render: text
