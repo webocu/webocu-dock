@@ -30,7 +30,7 @@ jobs:
       - uses: actions/checkout@v4
       - name: Build the package
         run: make build
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: webocu.dock-ipk
           path: dist/*.ipk
